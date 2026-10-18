@@ -2,7 +2,6 @@
 // from the 40 dots S0 left on its centre line, kick = speed surge, offbeat bass = green/amber flip,
 // streaks from bar 13, radial flashes on bars 9 and 13, and over the bar 16 fill the stars slide
 // onto the 16 rows S2 turns into copper bars.
-#include "common/syscalls/syscalls.h"
 #include "demo.hh"
 #include "handoff.hh"
 #include "psyqo/fixed-point.hh"
@@ -213,11 +212,6 @@ class Starfield final : public Section {
             }
         }
 
-#ifdef L1_DBG
-        if ((f.frameNo & 63) == 0)
-            ramsyscall_printf("S1 rects %d lines %d dz %d dt %d z0 %d x0 %d y0 %d z500 %d\n", int(b.rects.n), int(b.lines.n), int(dz256), int(m_dt256),
-                              int(m_star[0].z >> 8), int(m_star[0].x >> 8), int(m_star[0].y >> 8), int(m_star[500].z >> 8));
-#endif
         // flashes: crash at bar 9, shot at bar 13, decaying over ~36 ticks
         int fage = -1;
         if (bar == 9 || bar == 13) fage = int(clock.sinceBar);

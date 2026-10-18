@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Writes the disc's system-area licence file (LBA 0-11, 12 x 2336-byte
-sectors, the format mkpsxiso's <license file=...> takes).
+sectors of 8-byte subheader + 2048 data + 280).
 
 Nothing here comes from a Sony disc: sector 4 carries our own text and
 sectors 5-11 our own logo, an extruded "41" as a TMD of flat triangles.

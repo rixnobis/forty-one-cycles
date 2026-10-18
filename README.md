@@ -8,7 +8,7 @@ A PlayStation demo. Code and music by Rix. Built with psyqo and nugget; runs on 
     make -j8                  # forty-one.ps-exe; needs mipsel-none-elf-g++
     make DEBUG_SKIP=65        # start at bar 65
 
-CD image: `scripts/make-disc.sh forty-one.ps-exe out/` (needs mkpsxiso). The licence sectors come from
+CD image: `scripts/make-disc.sh forty-one.ps-exe out/` (runs PCSX-Redux's ISO builder; set `PCSX_REDUX` to the binary). The licence sectors come from
 `tools/gen_licence.py`: our own text and logo, no Sony data, so the logo screen reads FORTY-ONE CYCLES.
 
 Overlay off: `make EXTRA=-DNO_OVERLAY`. Release (no overlay, no serial trace, so it runs with nothing reading the serial port): `make EXTRA="-DNO_OVERLAY -DNO_LOG"`. Note mirror mask override: `make MIRROR_MASK=0x...`

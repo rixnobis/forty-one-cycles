@@ -1,31 +1,20 @@
 #!/bin/sh
-# Builds a bootable CD image (bin/cue) from a PS-EXE with mkpsxiso.
+# Builds a bootable CD image (bin/cue) from a PS-EXE with PCSX-Redux's
+# ISO builder (scripts/make-disc.lua).
 #   scripts/make-disc.sh forty-one.ps-exe out/
 # The licence sectors come from tools/gen_licence.py (our own text and
-# logo, no Sony data).
+# logo, no Sony data). PCSX_REDUX points at the emulator binary.
 set -e
 EXE=$1
 OUT=$2
-MKPSXISO=${MKPSXISO:-mkpsxiso}
+PCSX_REDUX=${PCSX_REDUX:-pcsx-redux}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
 cp "$EXE" "$OUT/PSX.EXE"
 printf 'BOOT = cdrom:\\PSX.EXE;1\r\nTCB = 4\r\nEVENT = 10\r\nSTACK = 801FFF00\r\n' > "$OUT/SYSTEM.CNF"
 python3 -I "$HERE/tools/gen_licence.py" "$OUT/licence.dat"
-cat > "$OUT/disc.xml" <<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<iso_project image_name="forty-one-cycles.bin" cue_sheet="forty-one-cycles.cue">
-  <track type="data">
-    <identifiers system="PLAYSTATION" application="PLAYSTATION" volume="FORTY_ONE_CYCLES"
-                 volume_set="FORTY_ONE_CYCLES" publisher="RIX" data_preparer="MKPSXISO"/>
-    <license file="licence.dat"/>
-    <directory_tree>
-      <file name="SYSTEM.CNF" type="data" source="SYSTEM.CNF"/>
-      <file name="PSX.EXE" type="data" source="PSX.EXE"/>
-      <dummy sectors="1024"/>
-    </directory_tree>
-  </track>
-</iso_project>
-XML
-cd "$OUT" && "$MKPSXISO" -y disc.xml
+DISC_EXE="$OUT/PSX.EXE" DISC_CNF="$OUT/SYSTEM.CNF" DISC_LICENCE="$OUT/licence.dat" \
+DISC_OUT="$OUT/forty-one-cycles.bin" \
+    "$PCSX_REDUX" -cli -dofile "$HERE/scripts/make-disc.lua"
+printf 'FILE "forty-one-cycles.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n' > "$OUT/forty-one-cycles.cue"

@@ -13,6 +13,16 @@
 #include "psyqo/primitives/triangles.hh"
 #include "s00_rects.hh"
 
+#ifndef L1_NOLINES
+#define L1_NOLINES 0
+#endif
+#ifndef L1_MAXLEN
+#define L1_MAXLEN 48
+#endif
+#ifndef L1_NOFLASH
+#define L1_NOFLASH 0
+#endif
+
 namespace demo {
 namespace {
 
@@ -67,6 +77,8 @@ class Starfield final : public Section {
         m_first = true;
     }
 
+    void onBar(const Clock&, int bar) override { m_stat.bar("S1", bar); }
+
     void onNote(const Clock&, unsigned channel, uint8_t note, uint8_t, uint32_t tick) override {
         if (channel == CH_DRUMS && (note == KEY_KICK || note == KEY_CRASH)) {
             m_kick = tick;
@@ -94,6 +106,7 @@ class Starfield final : public Section {
 
     void render(Frame& f) override {
         const Clock& clock = f.clock;
+        m_stat.sample(f);
         int parity = f.gpu.getParity();
         Buf& b = m_buf[parity];
         b.rects.reset();
@@ -200,9 +213,13 @@ class Starfield final : public Section {
                 }
                 if (unsigned(sx) < 320 && unsigned(sy) < 240 && bri > 3) {
                     psyqo::Color c = rgb(cr * bri >> 8, cg * bri >> 8, cb * bri >> 8);
-                    if (streaks) {
+                    if (streaks && !L1_NOLINES) {
                         uint32_t cur = pack(sx, sy);
-                        b.lines.add(s.prev, cur, c);
+                        int dx = sx - int16_t(s.prev & 0xffff), dy = sy - int16_t(s.prev >> 16);
+                        if (dx < -L1_MAXLEN || dx > L1_MAXLEN || dy < -L1_MAXLEN || dy > L1_MAXLEN)
+                            b.rects.add(sx, sy, 1, 1, c);  // a star that jumped: no streak
+                        else
+                            b.lines.add(s.prev, cur, c);
                     } else {
                         int sz = z < 560 ? 2 : 1;
                         b.rects.add(sx, sy, sz, sz, c);
@@ -226,7 +243,7 @@ class Starfield final : public Section {
         f.gpu.chain(b.tpageOpaque);
         b.rects.chain(f.gpu);
         b.lines.chain(f.gpu);
-        if (flash > 0) {
+        if (flash > 0 && !L1_NOFLASH) {
             b.tpageAdd.primitive.attr.set(psyqo::Prim::TPageAttr::FullBackAndFullFront).setDithering(true);
             f.gpu.chain(b.tpageAdd);
             psyqo::Color centre = rgb(flash * cr >> 8, flash * cg >> 8, flash * cb >> 8);
@@ -275,6 +292,7 @@ class Starfield final : public Section {
 
     Star m_star[NSTARS];
     Buf m_buf[2];
+    BarStat m_stat;
     uint32_t m_rng = 1;
     uint32_t m_t256 = 0, m_t0 = 0, m_kick = 0;
     int32_t m_dt256 = 0;

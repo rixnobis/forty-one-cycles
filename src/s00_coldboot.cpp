@@ -46,6 +46,8 @@ class ColdBoot final : public Section {
         g_handoff.dotLineY = LINE_Y;
     }
 
+    void onBar(const Clock&, int bar) override { m_stat.bar("S0", bar); }
+
     void onNote(const Clock&, unsigned channel, uint8_t note, uint8_t, uint32_t tick) override {
         if (channel == CH_ARP && m_pendingN < PENDING) {
             m_pending[m_pendingN++] = {note, tick};
@@ -85,6 +87,7 @@ class ColdBoot final : public Section {
 
     void render(Frame& f) override {
         const Clock& clock = f.clock;
+        m_stat.sample(f);
         int parity = f.gpu.getParity();
         Buf& b = m_buf[parity];
         b.rects.reset();
@@ -206,6 +209,7 @@ class ColdBoot final : public Section {
     int m_typed = 0;
     int m_arpCount = 0;
     Buf m_buf[2];
+    BarStat m_stat;
 };
 
 ColdBoot s_section;

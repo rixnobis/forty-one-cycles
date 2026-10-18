@@ -70,3 +70,26 @@ struct LineList : PrimList<psyqo::Prim::Line, CAP> {
 };
 
 }  // namespace demo
+
+#include "common/syscalls/syscalls.h"
+#include "demo.hh"
+
+namespace demo {
+
+// Frames rendered and vsyncs elapsed per bar, printed on the serial port: a bar is 102.9 frames at 60 fps.
+struct BarStat {
+    uint32_t frames = 0, vsyncs = 0, lastFrames = 0, lastVsyncs = 0;
+    bool primed = false;
+    void sample(Frame& f) {
+        frames = f.frameNo;
+        vsyncs = f.gpu.getFrameCount();
+    }
+    void bar(const char* tag, int n) {
+        if (primed) ramsyscall_printf("%s bar %d frames %d vsyncs %d\n", tag, n, int(frames - lastFrames), int(vsyncs - lastVsyncs));
+        primed = true;
+        lastFrames = frames;
+        lastVsyncs = vsyncs;
+    }
+};
+
+}  // namespace demo

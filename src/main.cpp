@@ -50,6 +50,8 @@ volatile uint32_t g_ticks = 0;
 volatile uint32_t g_queueDropped = 0;
 
 uintptr_t g_musicTimer;
+uint32_t g_nextTick;
+volatile uint32_t g_catchup;  // polls that ran late, caught up inside one timer call
 
 void pump() {
     g_ticks = g_ticks + 1;
@@ -195,7 +197,7 @@ void DemoScene::drain() {
             if (e.tag == TAG_BAR) {
                 if (m_clock.bar && int(e.data) == m_clock.bar + 1) {
                     uint32_t delta = e.tick - m_barTick;
-                    ramsyscall_printf("BAR %d tick %d delta %d\n", int(e.data), int(e.tick), int(delta));
+                    ramsyscall_printf("BAR %d tick %d delta %d catchup %d\n", int(e.data), int(e.tick), int(delta), int(g_catchup));
                     m_tpb256 = (m_tpb256 * 7 + delta * 256) / 8;  // smooth the 171/172 jitter
                 }
                 m_barTick = e.tick;
@@ -228,12 +230,26 @@ void DemoScene::frame() {
     // The music starts with the first frame, so the visuals never miss the intro.
     if (!m_started && m_frames >= START_FRAME) {
         m_started = true;
-        g_musicTimer = g_app.gpu().armPeriodicTimer(PSM_hblanks * psyqo::GPU::US_PER_HBLANK, [](uint32_t) {
-            pump();
+        // psyqo fires a periodic timer at most once per pump, so a frame longer than one tick
+        // would drop ticks and slow the song. Keep our own deadline and poll once per elapsed
+        // period: a heavy frame bunches ticks instead of stretching the music.
+        g_nextTick = g_app.gpu().now() + PSM_hblanks * psyqo::GPU::US_PER_HBLANK;
+        g_musicTimer = g_app.gpu().armPeriodicTimer(PSM_hblanks * psyqo::GPU::US_PER_HBLANK, [](uint32_t now) {
+            unsigned polls = 0;
+            while (int32_t(now - g_nextTick) >= 0) {
+                pump();
+                g_nextTick += PSM_hblanks * psyqo::GPU::US_PER_HBLANK;
+                polls++;
+            }
+            if (polls > 1) g_catchup = g_catchup + (polls - 1);
             g_app.gpu().changeTimerPeriod(g_musicTimer, PSM_hblanks * psyqo::GPU::US_PER_HBLANK);
         });
     }
     drain();
+#ifdef HEAVY_NOPUMP
+    // test only: CPU work with no pump point, longer than a tick period
+    {   volatile uint32_t spin = 0; for (uint32_t i = 0; i < HEAVY_NOPUMP; i++) spin = spin + i; }
+#endif
 
     uint32_t now = g_ticks;
     m_clock.ticks = now;

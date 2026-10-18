@@ -49,6 +49,9 @@ class Credits final : public Section {
         if (!recapScene().begun()) recapScene().begin(clock);
         m_white = false;
         m_whiteTick = 0;
+        // when each dot dies, computed once: the grid draws 1500 of them per frame
+        for (int i = 0; i < NDOTS; i++) m_gd[i] = int16_t(deathAt(i, 48, 480));
+        for (int i = 0; i < TITLE_LEN * 35; i++) m_td[i] = int16_t(deathAt(4000 + i, 260, 560));
         m_nCounter = 0;
         for (auto& t : m_lineAt) t = -1;
         // a debug jump past the first slots: those lines are already up
@@ -142,7 +145,8 @@ class Credits final : public Section {
             if (titleRow) continue;
             for (int cc = 0; cc < COLS; cc++) {
                 int i = r * COLS + cc;
-                int bright = dim(i, t, 48, 480, base);
+                if (t >= m_gd[i] + 40) continue;
+                int bright = base * (256 - clampi((t - m_gd[i]) * 256 / 40, 0, 256)) >> 8;
                 if (flash > bright) bright = flash * 2 / 3 + bright / 3;
                 if (bright <= 3) continue;
                 b.rects.add(4 + 8 * cc - 1, 8 * r + 3, 2, 2, phosphor(clampi(bright, 0, 255), flash));
@@ -153,8 +157,9 @@ class Credits final : public Section {
             for (int py = 0; py < 7; py++)
                 for (int px = 0; px < 5; px++) {
                     if (!(rows[py] & (0x10 >> px))) continue;
-                    int i = 4000 + g * 64 + py * 8 + px;
-                    int bright = dim(i, t, 260, 560, 235);
+                    int i = g * 35 + py * 5 + px;
+                    if (t >= m_td[i] + 40) continue;
+                    int bright = 235 * (256 - clampi((t - m_td[i]) * 256 / 40, 0, 256)) >> 8;
                     if (bright <= 3) continue;
                     b.rects.add(TITLE_X + g * GLYPH_PITCH + px * 3, TITLE_Y + py * 3, 2, 2, phosphor(clampi(bright, 0, 255), flash));
                 }
@@ -169,18 +174,17 @@ class Credits final : public Section {
         b.rects.chain(gpu);
     }
 
-    // Brightness of dot i at time t: full until its own moment inside [from, to), then gone.
-    static int dim(int i, int t, int from, int to, int level) {
+    // The moment dot i starts dying, hashed into [from, to).
+    static int deathAt(int i, int from, int to) {
         uint32_t h = uint32_t(i) * 2654435761u;
         h ^= h >> 15;
         h *= 0x2c1b3c6du;
         h ^= h >> 12;
-        int death = from + int(h % uint32_t(to - from));
-        int d = clampi((t - death) * 256 / 40, 0, 256);
-        return level * (256 - d) >> 8;
+        return from + int(h % uint32_t(to - from));
     }
 
     Buf m_buf[2];
+    int16_t m_gd[NDOTS] = {}, m_td[TITLE_LEN * 35] = {};
     bool m_white = false;
     uint32_t m_whiteTick = 0;
     unsigned m_nCounter = 0;

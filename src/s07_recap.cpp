@@ -23,21 +23,10 @@
 namespace demo {
 namespace {
 
-#ifndef L6_TESTRECT
-#define L6_TESTRECT 0
-#endif
-#ifndef L6_NOBAND
-#define L6_NOBAND 0
-#endif
-#ifndef L6_NOTEXT
-#define L6_NOTEXT 0
-#endif
-#ifndef L6_NOBALLS
-#define L6_NOBALLS 0
-#endif
-constexpr unsigned NSTARS = 448;
+constexpr unsigned NSTARS = 258;
 constexpr int Z_NEAR = 128, Z_FAR = 1024, H = 256, CX = 160, CY = 120;
 constexpr int FIRST_BAR = 97, END_BAR = 113;
+constexpr int FLASH_LEN = 40;  // clock units
 
 constexpr char kGreets[] =
     "GREETINGS TO PSX.DEV  ...  THE PCSX-REDUX CONTRIBUTORS  ...  "
@@ -226,7 +215,7 @@ class Scene final : public RecapScene {
             int t = pos - int(barPos(113));
             starDim = 256 - clampi(t * 90 / (5 * 256), 0, 90);   // 256 -> 166 over bars 113-117
             starDim -= clampi((pos - int(barPos(118))) * 166 / 256, 0, 166);
-            speedMul = 256 - clampi(t * 190 / (5 * 256), 0, 190);
+            speedMul = 256 - clampi(t * 130 / (5 * 256), 0, 130);
         }
         // the copper: in over half a bar after the crash, out with the bass fade (bars 113-118)
         enter = smoothi((pos - int(barPos(FIRST_BAR))) * 256 / 128);
@@ -270,7 +259,7 @@ class Scene final : public RecapScene {
         b.rects.chain(f.gpu);
         b.streaks.chain(f.gpu);
 
-        if (m_ballsOn && !L6_NOBALLS) {
+        if (m_ballsOn) {
             m_field.submit(f, m_ots[p]);
             f.gpu.chain(m_ots[p]);
         }
@@ -283,7 +272,7 @@ class Scene final : public RecapScene {
         psyqo::Fragments::SimpleFragment<psyqo::Prim::FastFill> clear;
         psyqo::Fragments::SimpleFragment<TexWindowOff> texWin;
         psyqo::Fragments::SimpleFragment<psyqo::Prim::TPage> tpageOpaque, tpageOpaque2, tpageAdd, tpageSub, tpageGour;
-        psyqo::Fragments::SimpleFragment<psyqo::Prim::GouraudTriangle> flashTri[4];
+        psyqo::Fragments::SimpleFragment<psyqo::Prim::GouraudTriangle> flashTri[8];
         psyqo::Fragments::SimpleFragment<psyqo::Prim::Rectangle> band;
         cu::GQuad bar[NBS * 2];
         RectList<NSTARS> rects;
@@ -391,12 +380,13 @@ class Scene final : public RecapScene {
                 if (z > 900) bri = bri * (Z_FAR - z) / (Z_FAR - 900);
                 if (bri < 0) bri = 0;
                 if (i + j >= m_seeded) bri = bri * intro >> 8;
-                bri = bri * starDim >> 8;
+                bri = bri * starDim * 3 >> 9;
+                if (bri > 255) bri = 255;
                 if (unsigned(sx) < 320 && unsigned(sy) < 240 && bri > 3) {
                     psyqo::Color c = rgb(cr * bri >> 8, cg * bri >> 8, cb * bri >> 8);
                     int dx = sx - int16_t(s.prev & 0xffff), dy = sy - int16_t(s.prev >> 16);
                     if (dx < -48 || dx > 48 || dy < -48 || dy > 48 || (dx | dy) == 0)
-                        b.rects.add(sx, sy, z < 560 ? 2 : 1, z < 560 ? 2 : 1, c);
+                        b.rects.add(sx, sy, z < 760 ? 2 : 1, z < 760 ? 2 : 1, c);
                     else
                         b.streaks.add(s.prev, pack(sx, sy), pack(sx + 1, sy + 1), c);
                 }
@@ -415,18 +405,14 @@ class Scene final : public RecapScene {
         psyqo::PrimPieces::TPageAttr sub;
         sub.set(psyqo::Prim::TPageAttr::FullBackSubFullFront).setDithering(false).enableDisplayArea();
         b.tpageSub.primitive.attr = sub;
-#if !L6_NOBAND
         gpu.chain(b.tpageSub);
-#endif
         auto& r = b.band.primitive;
         int g = 110 * k >> 8;
         r.setColor(rgb(g, g, g));
         r.setSemiTrans();
         r.position = {{.x = 0, .y = int16_t(172 + slide)}};
         r.size = {{.w = 320, .h = int16_t(68 - slide > 0 ? 68 - slide : 1)}};
-#if !L6_NOBAND
         gpu.chain(b.band);
-#endif
 
         psyqo::PrimPieces::TPageAttr op;
         op.set(psyqo::Prim::TPageAttr::FullBackAndFullFront).setDithering(true).enableDisplayArea();
@@ -472,10 +458,6 @@ class Scene final : public RecapScene {
             bot.setPointC({{.x = 0, .y = int16_t(yb)}}).setPointD({{.x = 320, .y = int16_t(yb)}});
         }
         cu::chainRun(gpu, b.bar, NBS * 2);
-#if L6_TESTRECT
-        { auto& rr = b.band.primitive; rr.setColor(rgb(255,255,255)); rr.setOpaque(); rr.position = {{.x = 10, .y = 200}}; rr.size = {{.w = 100, .h = 10}}; gpu.chain(b.band);
-          auto& q0 = b.bar[0].primitive; (void)q0; }
-#endif
 
         // greets scroller: glyph j at x = 320 + 16 j - scrolled, a half pixel per clock unit
         b.text.reset();
@@ -488,45 +470,48 @@ class Scene final : public RecapScene {
                 if (x >= 320) break;
                 if (x <= -16) continue;
                 char ch = kGreets[j];
-                int y = 200 - 8 + slide + ((36 * cu::sinq(trig, x * 7 + pos * 5)) >> 12);
+                int y = 200 - 8 + slide + ((22 * cu::sinq(trig, x * 7 + pos * 5)) >> 12);
                 psyqo::Color tint = cu::mix(cu::rgb(255, 255, 255), rowColor(unsigned(j) & 15), 50);
                 b.text.add(x, y, 16, 16, ch, cu::scale(tint, 128 + (k >> 1)), cu::rgb(0, 0, 0));
             }
         }
-#if !L6_NOTEXT
         b.text.chain(gpu);
-#endif
         (void)p;
     }
 
+    // Radial flash: four additive gouraud triangles from the centre to a diamond that grows with the age of
+    // the flash. A full-screen additive fill costs the GPU several ms and tips the frame past a vsync, and a
+    // TPage packet after these triangles stalled the DMA chain on silicon, so the diamond is small and the
+    // state is left additive (every frame's chain opens with its own TPage).
     void flashes(Frame& f, Buf& b) {
         const Clock& clock = f.clock;
-        int pos = int(clock.pos256);
-        int age = pos - m_flashAt;
+        int age = int(clock.pos256) - m_flashAt;
         int flash = 0;
-        if (age >= 0 && age < 64) flash = (m_flashAmt * 3 / 8) * (64 - age) * (64 - age) / (64 * 64);
+        if (age >= 0 && age < FLASH_LEN) flash = (m_flashAmt * 3 / 8) * (FLASH_LEN - age) * (FLASH_LEN - age) / (FLASH_LEN * FLASH_LEN);
         if (flash <= 0) return;
         psyqo::PrimPieces::TPageAttr add;
-        add.set(psyqo::Prim::TPageAttr::FullBackAndFullFront).setDithering(true);
+        add.set(psyqo::Prim::TPageAttr::FullBackAndFullFront).setDithering(false);
         b.tpageAdd.primitive.attr = add;
         f.gpu.chain(b.tpageAdd);
         psyqo::Color centre = rgb(flash, flash, flash);
         psyqo::Color zero = rgb(0, 0, 0);
-        static const int16_t cxs[5] = {0, 320, 320, 0, 0};
-        static const int16_t cys[5] = {0, 0, 240, 240, 0};
-        for (int j = 0; j < 4; j++) {
+        int rx = 40 + age * 3, ry = (rx * 3) >> 2;  // grows with the age
+        int16_t px[9], py[9];
+        for (int j = 0; j < 8; j++) {
+            px[j] = int16_t(CX + ((rx * cu::cosq(f.trig, j * 256)) >> 12));
+            py[j] = int16_t(CY + ((ry * cu::sinq(f.trig, j * 256)) >> 12));
+        }
+        px[8] = px[0];
+        py[8] = py[0];
+        for (int j = 0; j < 8; j++) {
             auto& t = b.flashTri[j].primitive;
             t.setColorA(centre).setColorB(zero).setColorC(zero);
             t.setSemiTrans();
             t.pointA = {{.x = CX, .y = CY}};
-            t.pointB = {{.x = cxs[j], .y = cys[j]}};
-            t.pointC = {{.x = cxs[j + 1], .y = cys[j + 1]}};
+            t.pointB = {{.x = px[j], .y = py[j]}};
+            t.pointC = {{.x = px[j + 1], .y = py[j + 1]}};
             f.gpu.chain(b.flashTri[j]);
         }
-        psyqo::PrimPieces::TPageAttr op;
-        op.set(psyqo::Prim::TPageAttr::FullBackAndFullFront).setDithering(false);
-        b.tpageOpaque2.primitive.attr = op;
-        f.gpu.chain(b.tpageOpaque2);
     }
 
     bool m_begun = false;

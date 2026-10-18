@@ -136,7 +136,7 @@ class Copper final : public Section {
             int y = kScrollerY - 8 + ((40 * sinq(f.trig, x * 7 + pos * 5)) >> 12);
             unsigned idx = unsigned(ch - 32);
             uint8_t u0 = uint8_t(idx * 8), v0 = uint8_t(208 + 16 * (idx / 32));
-            uint8_t u1 = uint8_t(u0 + 7);  // last texel of the cell; u0 + 8 is the next glyph
+            uint8_t u1 = uint8_t(u0 + 7);  // u0 + 8 is the next glyph; the quad is 7/8 wide to match
             uint8_t v1 = uint8_t(v0 + 15);
             psyqo::Color tint = mix(rgb(255, 255, 255), demo::rowColor(unsigned(k) & 15), 70);
             for (int layer = 0; layer < 2; layer++) {
@@ -144,9 +144,9 @@ class Copper final : public Section {
                 int ox = layer ? 0 : 2, oy = layer ? 0 : 2;
                 q.setColor(layer ? scale(tint, 128) : rgb(26, 26, 26));
                 q.pointA = {{.x = int16_t(x + ox), .y = int16_t(y + oy)}};
-                q.pointB = {{.x = int16_t(x + ox + 16), .y = int16_t(y + oy)}};
-                q.pointC = {{.x = int16_t(x + ox), .y = int16_t(y + oy + 16)}};
-                q.pointD = {{.x = int16_t(x + ox + 16), .y = int16_t(y + oy + 16)}};
+                q.pointB = {{.x = int16_t(x + ox + 14), .y = int16_t(y + oy)}};
+                q.pointC = {{.x = int16_t(x + ox), .y = int16_t(y + oy + 15)}};
+                q.pointD = {{.x = int16_t(x + ox + 14), .y = int16_t(y + oy + 15)}};
                 q.uvA = {u0, v0};
                 q.uvB = {u1, v0};
                 q.uvC = {u0, v1};

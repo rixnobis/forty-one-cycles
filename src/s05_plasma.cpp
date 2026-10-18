@@ -437,7 +437,7 @@ class Plasma final : public Section {
             if (ch <= ' ') continue;
             unsigned idx = unsigned(ch - 32);
             uint8_t u0 = uint8_t(idx * 8), v0 = uint8_t(208 + 16 * (idx / 32));
-            uint8_t u1 = uint8_t(u0 + 7);  // last texel of the cell; u0 + 8 is the next glyph
+            uint8_t u1 = uint8_t(u0 + 7);  // u0 + 8 is the next glyph; the quad is 7/8 wide to match
             uint8_t v1 = uint8_t(v0 + 15);
             int x = x0 + int(i) * kAdvance;
             for (int layer = 0; layer < 2; layer++) {
@@ -447,9 +447,9 @@ class Plasma final : public Section {
                                  : gray(a * 150 >> 8));
                 q.setSemiTrans();
                 q.pointA = {{.x = int16_t(x + ox), .y = int16_t(y0 + oy)}};
-                q.pointB = {{.x = int16_t(x + ox + kAdvance), .y = int16_t(y0 + oy)}};
-                q.pointC = {{.x = int16_t(x + ox), .y = int16_t(y0 + oy + 16)}};
-                q.pointD = {{.x = int16_t(x + ox + kAdvance), .y = int16_t(y0 + oy + 16)}};
+                q.pointB = {{.x = int16_t(x + ox + kAdvance * 7 / 8), .y = int16_t(y0 + oy)}};
+                q.pointC = {{.x = int16_t(x + ox), .y = int16_t(y0 + oy + 15)}};
+                q.pointD = {{.x = int16_t(x + ox + kAdvance * 7 / 8), .y = int16_t(y0 + oy + 15)}};
                 q.uvA = {u0, v0};
                 q.uvB = {u1, v0};
                 q.uvC = {u0, v1};

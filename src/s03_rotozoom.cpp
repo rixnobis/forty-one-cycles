@@ -100,9 +100,9 @@ class Rotozoom final : public Section {
             gpu.chain(m_win[p]);
             bool two = pos >= bar(41);
             int fade2 = pd > 0 ? 256 - clampi(pd * 2, 0, 256) : 256;
-            plane(f, p, 0, angle, zoom, 64 * 65536 + 32768, 60 * 65536 + 32768, rgb(two ? 112 : 128, two ? 112 : 128, two ? 112 : 128), false);
+            plane(f, p, 0, angle, zoom, 64 * 65536 + 32768, 60 * 65536 + 32768, rgb(two ? 120 : 128, two ? 120 : 128, two ? 120 : 128), false);
             if (two && fade2 > 0) {
-                int k = (72 * fade2) >> 8;
+                int k = (110 * fade2) >> 8;
                 plane(f, p, 1, -angle + 512, zoom * 205 >> 8, 64 * 65536 + 32768, (60 + 32) * 65536 + 32768, rgb(k, k, k), true);
             }
             int fl = 0;
@@ -158,7 +158,7 @@ class Rotozoom final : public Section {
         }
         psyqo::PrimPieces::TPageAttr attr;
         attr.setPageX(TEX_X >> 6).setPageY(TEX_Y >> 8).set(psyqo::Prim::TPageAttr::Tex16Bits).setDithering(false).enableDisplayArea();
-        if (add) attr.set(psyqo::Prim::TPageAttr::FullBackAndFullFront);
+        if (add) attr.set(psyqo::Prim::TPageAttr::FullBackSubFullFront);  // plane 2 subtracts: keeps the darks
         TQuad* cells = m_cells[pl][p];
         for (int j = 0; j < GY; j++) {
             for (int i = 0; i < GX; i++) {

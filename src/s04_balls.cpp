@@ -292,7 +292,7 @@ void BallField::submit(Frame& f, BallOT& ot) {
         }
     }
 
-    for (unsigned i = 0; i < COUNT + 3; i += 3) {
+    for (unsigned i = 0; i < COUNT; i += 3) {
         psyqo::Vec3 v0, v1, v2;
         v0.x.value = m_cur[i][0]; v0.y.value = m_cur[i][1]; v0.z.value = m_cur[i][2];
         v1.x.value = m_cur[i + 1][0]; v1.y.value = m_cur[i + 1][1]; v1.z.value = m_cur[i + 1][2];
@@ -485,6 +485,17 @@ class BallsSection final : public Section {
     void render(Frame& f) override {
         if (!m_field.ready()) m_field.init(f);
         unsigned parity = f.gpu.getParity();
+        // serial: rendered frames per music second (112 ticks), measured over 64 frames
+        if (f.frameNo - m_logFrame >= 64) {
+            uint32_t dt = f.clock.ticks - m_logTicks;
+            if (m_logFrame && dt) {
+                uint32_t fps10 = (f.frameNo - m_logFrame) * 1120 / dt;
+                ramsyscall_printf("S4 fps %d.%d at bar %d frac %d\n", int(fps10 / 10), int(fps10 % 10), f.clock.bar,
+                                  f.clock.frac);
+            }
+            m_logFrame = f.frameNo;
+            m_logTicks = f.clock.ticks;
+        }
         int32_t t = clampi(m_rel * 2, 0, 256);
         auto mix = [&](int ch, int32_t dark) { return (ch * (256 - t) + dark * t) >> 8; };
         int32_t fl = m_field.flash >> 2;
@@ -503,6 +514,7 @@ class BallsSection final : public Section {
     psyqo::Fragments::SimpleFragment<psyqo::Prim::FastFill> m_clear[2];
     psyqo::Color m_fill{{.r = 0, .g = 0, .b = 0}};
     int32_t m_rel = 0;
+    uint32_t m_logFrame = 0, m_logTicks = 0;
     unsigned m_orchCount = 0, m_cuts = 0, m_throwHits = 0;
     int32_t m_lastOrch = 0, m_lastCut = 0, m_flashAt = 0, m_flashAmt = 0;
     uint8_t m_lead[4] = {};

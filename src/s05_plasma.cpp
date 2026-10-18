@@ -327,6 +327,13 @@ class Plasma final : public Section {
         qa.uvB = {159, 0};
         qa.uvC = {0, 119};
         qa.uvD = {159, 119};
+#ifdef PLASMA_TILE_TEST
+        // 128x128 texture window, UV 0..255: the texture shows twice in each direction
+        m_texWin[p].primitive.command = 0xe2000000 | 16 | (16 << 5);
+        qa.uvB = {255, 0};
+        qa.uvC = {0, 239};
+        qa.uvD = {255, 239};
+#endif
         qa.clutIndex = psyqo::PrimPieces::ClutIndex(psyqo::Vertex{{.x = CLUT_X, .y = CLUT_Y_A}});
         qa.tpage = tpOpaque;
         gpu.chain(m_qa[p]);

@@ -4,7 +4,7 @@
 
 #include "psyqo/fragments.hh"
 #include "psyqo/gpu.hh"
-#include "psyqo/primitives/lines.hh"
+#include "psyqo/primitives/triangles.hh"
 #include "psyqo/primitives/rectangles.hh"
 
 namespace demo {
@@ -57,15 +57,34 @@ struct RectList : PrimList<psyqo::Prim::Rectangle, CAP> {
     }
 };
 
+// Streaks are thin flat triangles: GP0 line primitives in a chain stalled the DMA on silicon (SCPH-5501 #3 and
+// SCPH-7001 #5, every variant with lines hung and the same build without them ran on) while Redux drew them.
 template <unsigned CAP>
-struct LineList : PrimList<psyqo::Prim::Line, CAP> {
-    bool add(uint32_t a, uint32_t b, psyqo::Color c) {
-        auto* p = this->next();
-        if (!p) return false;
-        p->setColor(c);
-        p->pointA.packed = a;
-        p->pointB.packed = b;
+struct TriList {
+    static constexpr unsigned PER = 60;  // 4 words each, 240 per node
+    psyqo::Fragments::FixedFragment<psyqo::Prim::Triangle, PER> frag[(CAP + PER - 1) / PER];
+    unsigned n = 0;
+    void reset() { n = 0; }
+    bool add(uint32_t a, uint32_t b, uint32_t c, psyqo::Color col) {
+        if (n >= CAP) return false;
+        auto& p = frag[n / PER].primitives[n % PER];
+        n++;
+        p.setColor(col);
+        p.pointA.packed = a;
+        p.pointB.packed = b;
+        p.pointC.packed = c;
         return true;
+    }
+    void chain(psyqo::GPU& gpu) {
+        unsigned full = n / PER, rem = n % PER;
+        for (unsigned i = 0; i < full; i++) {
+            frag[i].count = PER;
+            gpu.chain(frag[i]);
+        }
+        if (rem) {
+            frag[full].count = rem;
+            gpu.chain(frag[full]);
+        }
     }
 };
 

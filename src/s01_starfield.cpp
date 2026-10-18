@@ -13,14 +13,8 @@
 #include "psyqo/primitives/triangles.hh"
 #include "s00_rects.hh"
 
-#ifndef L1_NOLINES
-#define L1_NOLINES 0
-#endif
 #ifndef L1_MAXLEN
 #define L1_MAXLEN 48
-#endif
-#ifndef L1_NOFLASH
-#define L1_NOFLASH 0
 #endif
 
 namespace demo {
@@ -47,6 +41,12 @@ class Starfield final : public Section {
 
     void begin(const Clock& clock, Section*) override {
         m_rng = 0x41414141u ^ clock.ticks;
+        // slide targets, computed once: the CPU budget per frame must stay under one music tick (8.9 ms)
+        for (unsigned i = 0; i < NSTARS; i++) m_tx[i] = int16_t(int(i >> 4) * 320 / int(NSTARS / 16) + 3);
+        for (unsigned r = 0; r < 16; r++) {
+            m_rowY[r] = int16_t(rowY(r) + 1);
+            m_rowC[r] = rowColor(r);
+        }
         if (g_handoff.dotCount == 0) {  // debug jump straight here: make the line S0 would have left
             g_handoff.dotCount = 40;
             for (int c = 0; c < 40; c++) g_handoff.dotX[c] = int16_t(4 + 8 * c);
@@ -195,10 +195,10 @@ class Starfield final : public Section {
 
                 if (u) {
                     // slide: screen position toward a slot on row (idx % 16), column (idx / 16)
-                    unsigned row = idx & 15, col = idx >> 4;
-                    int tx = int(col * 320 / (NSTARS / 16)) + 3, ty = rowY(row) + 1;
+                    unsigned row = idx & 15;
+                    int tx = m_tx[idx], ty = m_rowY[row];
                     int px = sx + (((tx - sx) * ue) >> 8), py = sy + (((ty - sy) * ue) >> 8);
-                    psyqo::Color rc = rowColor(row);
+                    const psyqo::Color rc = m_rowC[row];
                     int r = (cr * bri >> 8), g = (cg * bri >> 8), bl = (cb * bri >> 8);
                     int mix = ue;
                     r += ((rc.r - r) * mix) >> 8;
@@ -213,13 +213,16 @@ class Starfield final : public Section {
                 }
                 if (unsigned(sx) < 320 && unsigned(sy) < 240 && bri > 3) {
                     psyqo::Color c = rgb(cr * bri >> 8, cg * bri >> 8, cb * bri >> 8);
-                    if (streaks && !L1_NOLINES) {
+                    if (streaks) {
                         uint32_t cur = pack(sx, sy);
                         int dx = sx - int16_t(s.prev & 0xffff), dy = sy - int16_t(s.prev >> 16);
                         if (dx < -L1_MAXLEN || dx > L1_MAXLEN || dy < -L1_MAXLEN || dy > L1_MAXLEN)
                             b.rects.add(sx, sy, 1, 1, c);  // a star that jumped: no streak
                         else
-                            b.lines.add(s.prev, cur, c);
+                            if ((dx | dy) == 0)
+                                b.rects.add(sx, sy, 1, 1, c);
+                            else
+                                b.lines.add(s.prev, cur, pack(sx + 1, sy + 1), c);
                     } else {
                         int sz = z < 560 ? 2 : 1;
                         b.rects.add(sx, sy, sz, sz, c);
@@ -243,7 +246,7 @@ class Starfield final : public Section {
         f.gpu.chain(b.tpageOpaque);
         b.rects.chain(f.gpu);
         b.lines.chain(f.gpu);
-        if (flash > 0 && !L1_NOFLASH) {
+        if (flash > 0) {
             b.tpageAdd.primitive.attr.set(psyqo::Prim::TPageAttr::FullBackAndFullFront).setDithering(true);
             f.gpu.chain(b.tpageAdd);
             psyqo::Color centre = rgb(flash * cr >> 8, flash * cg >> 8, flash * cb >> 8);
@@ -270,7 +273,7 @@ class Starfield final : public Section {
         psyqo::Fragments::SimpleFragment<psyqo::Prim::TPage> tpageOpaque, tpageOpaque2, tpageAdd;
         psyqo::Fragments::SimpleFragment<psyqo::Prim::GouraudTriangle> flashTri[4];
         RectList<NSTARS> rects;
-        LineList<NSTARS> lines;
+        TriList<NSTARS> lines;
     };
 
     static uint32_t pack(int x, int y) { return uint32_t(uint16_t(x)) | (uint32_t(uint16_t(y)) << 16); }
@@ -291,6 +294,9 @@ class Starfield final : public Section {
     }
 
     Star m_star[NSTARS];
+    int16_t m_tx[NSTARS];
+    int16_t m_rowY[16];
+    psyqo::Color m_rowC[16];
     Buf m_buf[2];
     BarStat m_stat;
     uint32_t m_rng = 1;

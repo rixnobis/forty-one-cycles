@@ -1,0 +1,12 @@
+*.o
+*.elf
+*.ps-exe
+*.map
+*.d
+build/
+out/
+__pycache__/
+tools/megademo-cued.mid
+*.dep
+tools/megademo-cued.mml
+forty-one.elf

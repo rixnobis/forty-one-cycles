@@ -1,6 +1,6 @@
 // The contract between the framework (main.cpp) and the sections (sNN_*.cpp).
 //
-// Music clock: PSM_Poll runs from a periodic timer, 100 ticks/s. BAR cues (tag 1,
+// Music clock: PSM_Poll runs from a periodic timer; one tick is one MIDI tick (PPQ 48), 112/s at 140 bpm. BAR cues (tag 1,
 // payload = bar 1..121) and SECTION cues (tag 2, payload = section index 0..8) come
 // from the song. All animation is a function of Clock, never of the frame count, so
 // motion is identical at 60 and 50 fps.
@@ -28,12 +28,12 @@ constexpr uint8_t KEY_KICK = 36, KEY_SNARE = 38, KEY_CLAP = 39, KEY_SNARE2 = 40,
                   KEY_CRASH = 49;
 
 struct Clock {
-    uint32_t ticks;        // PSM_Poll calls since boot (100/s)
+    uint32_t ticks;        // PSM_Poll calls since boot
     int bar;               // 1-based bar of the song, 0 before the first BAR cue
     int beat;              // 1..4
     int frac;              // 0..255 position inside the bar
     uint32_t pos256;       // (bar - 1) * 256 + frac, monotonic inside one pass of the song
-    uint32_t ticksPerBar;  // measured, smoothed; nominal 171
+    uint32_t ticksPerBar;  // 192 (PPQ 48 x 4 beats)
     uint32_t sinceBar;     // ticks since the BAR cue
     int section;           // active section index, -1 before the first SECTION cue
     int sectionBar;        // bar the active section began on

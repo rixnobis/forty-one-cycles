@@ -102,7 +102,7 @@ class Rotozoom final : public Section {
             int fade2 = pd > 0 ? 256 - clampi(pd * 2, 0, 256) : 256;
             plane(f, p, 0, angle, zoom, 64 * 65536 + 32768, 60 * 65536 + 32768, rgb(two ? 120 : 128, two ? 120 : 128, two ? 120 : 128), false);
             if (two && fade2 > 0) {
-                int k = (110 * fade2) >> 8;
+                int k = (80 * fade2) >> 8;
                 plane(f, p, 1, -angle + 512, zoom * 205 >> 8, 64 * 65536 + 32768, (60 + 32) * 65536 + 32768, rgb(k, k, k), true);
             }
             int fl = 0;

@@ -13,7 +13,8 @@ namespace demo {
 namespace {
 
 constexpr int TEX_X = 960, TEX_Y = 0;
-constexpr int CLUT_X = 768, CLUT_Y = 500;
+// Off the system font: its lowercase row is x960..1023, y496..511.
+constexpr int CLUT_X = 512, CLUT_Y = 500;
 constexpr int BALL_R = 130;   // world radius, GTE units
 constexpr int PROJ_H = 256;   // GTE projection distance
 constexpr int S4_FIRST_BAR = 49;

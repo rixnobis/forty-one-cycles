@@ -37,6 +37,13 @@ struct GlyphPrologue {
 
 using TQuad = psyqo::Fragments::SimpleFragment<psyqo::Prim::TexturedQuad>;
 
+// GP0(80h) VRAM to VRAM copy
+struct Blit {
+    uint32_t command = 0x80000000;
+    uint32_t src, dst, size;
+};
+constexpr int kStrips = 12, kStripH = 20;
+
 class Copper final : public Section {
   public:
     const char* name() const override { return "S2 COPPER_SCROLLER"; }
@@ -63,6 +70,7 @@ class Copper final : public Section {
         e.screenStart(gpu, p);
         e.screenBars(gpu, p);
         scroller(f, p);
+        tear(f, p);
 
         m_frames++;
         if (m_fpsTick == 0) m_fpsTick = c.ticks;
@@ -75,6 +83,34 @@ class Copper final : public Section {
     }
 
   private:
+    // Zap, bar 29: horizontal strips of the finished frame slide sideways with wrap-around,
+    // through the scratch area, the offset decaying over the bar.
+    void tear(Frame& f, unsigned p) {
+        const uint32_t pos = f.clock.pos256;
+        if (pos < bar(29) || pos >= bar(30)) return;
+        int amp = (40 * (256 - int(pos - bar(29)))) >> 8;
+        psyqo::Prim::FastFill ff;
+        f.gpu.getNextClear(ff);
+        const int base = ff.rect.pos.y;
+        unsigned n = 0;
+        auto put = [&](int sx, int sy, int dx, int dy, int w) {
+            auto& b = m_blit[p][n++].primitive;
+            b.src = uint32_t(sx) | (uint32_t(sy) << 16);
+            b.dst = uint32_t(dx) | (uint32_t(dy) << 16);
+            b.size = uint32_t(w) | (uint32_t(kStripH) << 16);
+        };
+        for (int s = 0; s < kStrips; s++) {
+            int d = (amp * sinq(f.trig, s * 330 + int(pos) * 24)) >> 12;
+            d = (d + 320) % 320;
+            if (d == 0) continue;
+            int y = base + s * kStripH;
+            put(0, y, SCR_X, SCR_Y, 320);
+            put(SCR_X, SCR_Y, d, y, 320 - d);
+            put(SCR_X + 320 - d, SCR_Y, 0, y, d);
+        }
+        chainRun(f.gpu, m_blit[p], n);
+    }
+
     void scroller(Frame& f, unsigned p) {
         auto& gpu = f.gpu;
         const int pos = int(f.clock.pos256);
@@ -128,6 +164,7 @@ class Copper final : public Section {
 
     psyqo::Fragments::SimpleFragment<GlyphPrologue> m_pro[2];
     TQuad m_shadow[2][kMaxGlyphs], m_glyph[2][kMaxGlyphs];
+    psyqo::Fragments::SimpleFragment<Blit> m_blit[2][kStrips * 3];
     uint32_t m_frames = 0, m_fpsTick = 0;
 };
 

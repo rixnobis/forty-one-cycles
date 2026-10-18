@@ -111,7 +111,8 @@ class Engine {
         int pulse = clampi(220 - tt * 7, 0, 220);  // white pulse on the crash
         if (pos >= bar(25)) {
             int t25 = int(pos - bar(25));
-            m_l.k2 = smooth(t25 * 2);
+            m_l.k2 = (smooth(t25 * 2) * 120 >> 8) * (256 - ((fold * 190) >> 8)) >> 8;
+            if (!m_l.k2) m_l.k2 = 1;
             pulse = clampi(pulse + 200 - t25 * 6, 0, 220);
         } else {
             m_l.k2 = 0;
@@ -162,7 +163,7 @@ class Engine {
             for (unsigned i = 0; i < NB; i++) {
                 psyqo::Color c = l ? demo::rowColor(NB - 1 - i) : demo::rowColor(i);
                 if (l) c = rgb(c.b, c.g, c.r);
-                psyqo::Color core = mix(c, rgb(255, 255, 255), 100);
+                psyqo::Color core = mix(c, rgb(255, 255, 255), 50);
                 psyqo::Color edge = scale(c, 40);
                 int f = pulse;
                 if (!l && m_flashTick[i]) {

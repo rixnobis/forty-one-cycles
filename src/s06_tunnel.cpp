@@ -203,7 +203,7 @@ class Tunnel final : public Section {
             m_logTicks = f.clock.ticks;
         }
 
-        int32_t glow = clampi(255 - m_open - (m_open > 200 ? 55 : 0), 0, 255);
+        int32_t glow = 0;  // the vanishing point is a dark hole
         int32_t wh = rel < 84 ? 255 - clampi(rel - 12, 0, 72) * 3 : 0;  // the entry white, same ramp as the flash below
         gpu.getNextClear(m_clear[p].primitive, {{.r = uint8_t(clampi((200 * glow >> 8) + wh, 0, 255)), .g = uint8_t(clampi((230 * glow >> 8) + wh, 0, 255)), .b = uint8_t(clampi(glow + wh, 0, 255))}});
         gpu.chain(m_clear[p]);
@@ -224,7 +224,7 @@ class Tunnel final : public Section {
         int32_t env2 = (cd >= 0 && cd < 96) ? (96 - cd) * 255 / 96 : 0;
         m_drawn2 = 0;
         if (env2 > 0 && m_open < 200) {
-            layer(f, m_ots2[p], m_quads2[p], pos, Layer{176, -256, 292, 140, 64, env2, true});
+            layer(f, m_ots2[p], m_quads2[p], pos, Layer{176, -256, 292, 140, 64, (env2 * 110) >> 8, true});
             gpu.chain(m_ots2[p]);
         }
         gpu.chain(m_winOff[p]);  // window off again for whoever draws next
@@ -366,8 +366,9 @@ class Tunnel final : public Section {
         // ring colours: fog toward the far end, kick pulse, the counter band as a warm highlight
         psyqo::Color rc[NR];
         for (int k = 0; k < NR; k++) {
-            // fog: bright near, dimmer through the middle, then a glow toward the far end
-            int32_t b = 160 - k * 6 + (k > 8 ? (k - 8) * (k - 8) * 4 : 0) + 0;
+            // depth shade: full at the near ring, near black at the far one (modulation 128 is neutral)
+            int32_t t = ((NR - 1 - k) * 256) / (NR - 1);
+            int32_t b = 8 + ((142 * ((t * 154 >> 8) + ((t * t >> 8) * 102 >> 8))) >> 8);
             b += (kickEnv * 30) >> 8;
             b = (b * L.bright) >> 8;
             if (m_inverted) b = (b * 190) >> 8;

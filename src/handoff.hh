@@ -29,6 +29,13 @@ struct Handoff {
     int16_t dotX[MAX_DOTS] = {};
     unsigned dotCount = 0;
     int16_t dotLineY = 120;
+    // S6 -> S7: ring vertices of the opening tunnel, screen space, rewritten every frame of bar 96's last half.
+    // tunnelZ = ring index, 0 near .. 15 far. Only on-screen vertices are kept, compacted.
+    static constexpr unsigned MAX_TUNNEL = 256;
+    int16_t tunnelX[MAX_TUNNEL] = {};
+    int16_t tunnelY[MAX_TUNNEL] = {};
+    uint16_t tunnelZ[MAX_TUNNEL] = {};
+    unsigned tunnelCount = 0;
 };
 
 inline Handoff g_handoff;

@@ -9,6 +9,8 @@
 #include <stdint.h>
 
 #include "psyqo/font.hh"
+#include "psyqo/fragments.hh"
+#include "psyqo/primitives/control.hh"
 #include "psyqo/gpu.hh"
 #include "psyqo/trigonometry.hh"
 
@@ -78,11 +80,16 @@ class StubSection : public Section {
     StubSection(const char* n, psyqo::Color c) : m_name(n), m_color(c) {}
     const char* name() const override { return m_name; }
     void begin(const Clock&, Section*) override {}
-    void render(Frame& f) override { f.gpu.clear(m_color); }
+    void render(Frame& f) override {
+        auto& c = m_clear[f.gpu.getParity()];
+        f.gpu.getNextClear(c.primitive, m_color);
+        f.gpu.chain(c);
+    }
 
   private:
     const char* m_name;
     psyqo::Color m_color;
+    psyqo::Fragments::SimpleFragment<psyqo::Prim::FastFill> m_clear[2];
 };
 
 }  // namespace demo

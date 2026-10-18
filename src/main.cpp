@@ -272,9 +272,9 @@ void DemoScene::overlay(Frame& f) {
 #ifndef NO_OVERLAY
     auto& font = f.font;
     auto& gpu = f.gpu;
-    font.printf(gpu, {{.x = 4, .y = 4}}, {{.r = 255, .g = 255, .b = 255}}, "bar %d.%d  %s", m_clock.bar,
+    font.chainprintf(gpu, {{.x = 4, .y = 4}}, {{.r = 255, .g = 255, .b = 255}}, "bar %d.%d  %s", m_clock.bar,
                      m_clock.beat, m_active ? m_active->name() : "-");
-    font.printf(gpu, {{.x = 4, .y = 20}}, {{.r = 255, .g = 255, .b = 255}}, "fps %d.%d  tpb %d  drop %d/%d",
+    font.chainprintf(gpu, {{.x = 4, .y = 20}}, {{.r = 255, .g = 255, .b = 255}}, "fps %d.%d  tpb %d  drop %d/%d",
                      int(m_fps10 / 10), int(m_fps10 % 10), int(m_clock.ticksPerBar), int(PSM_notifyDropped),
                      int(g_queueDropped));
 #endif

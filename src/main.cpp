@@ -6,6 +6,7 @@
 #include "common/hardware/spu.h"
 #include "common/syscalls/syscalls.h"
 #include "demo.hh"
+#include "s05_plasma.hh"
 #include "psyqo/application.hh"
 #include "psyqo/font.hh"
 #include "psyqo/gpu.hh"
@@ -156,6 +157,7 @@ void Demo::prepare() {
 
 void Demo::createScene() {
     m_font.uploadSystemFont(gpu());
+    demo::pl::prewarm(gpu(), m_trig);
     g_scene.init();
 #ifdef DEBUG_SKIP
     skipTo(DEBUG_SKIP);

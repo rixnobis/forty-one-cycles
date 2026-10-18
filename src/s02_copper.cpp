@@ -1,7 +1,7 @@
 // Section 2: COPPER + SINE SCROLLER (bars 17-32). Raster bars swing on sines, a scroller rides
 // them one glyph per 16th note, and from bar 31 the bars are also drawn without the scroller
 // into the offscreen page that S3 uses as its texture.
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "s02_copper.hh"
 
 namespace demo {
@@ -75,7 +75,7 @@ class Copper final : public Section {
         m_frames++;
         if (m_fpsTick == 0) m_fpsTick = c.ticks;
         if (c.ticks - m_fpsTick >= 224) {
-            ramsyscall_printf("S2 fps*10 %d (frames %d ticks %d) bar %d\n", int(m_frames * 112 * 10 / (c.ticks - m_fpsTick)),
+            DEMO_LOG("S2 fps*10 %d (frames %d ticks %d) bar %d\n", int(m_frames * 112 * 10 / (c.ticks - m_fpsTick)),
                               int(m_frames), int(c.ticks - m_fpsTick), c.bar);
             m_frames = 0;
             m_fpsTick = c.ticks;

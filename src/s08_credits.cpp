@@ -2,7 +2,7 @@
 // (balls with the clap, copper with the bass fade, stars last); the credits appear over the dimming
 // starfield on the counter line's falling notes. The final hit at bar 119 is one white frame, then the
 // S0 dot grid with the title fully typed, its dots dying out with the reverb tail.
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "demo.hh"
 #include "handoff.hh"
 #include "s00_glyphs.hh"
@@ -64,7 +64,7 @@ class Credits final : public Section {
         recapScene().onNote(c, ch, note, vel, tick);
         if (ch == CH_COUNTER) {
 #ifdef L6_LOG
-            ramsyscall_printf("S8 counter note %d at bar %d frac %d\n", int(note), c.bar, c.frac);
+            DEMO_LOG("S8 counter note %d at bar %d frac %d\n", int(note), c.bar, c.frac);
 #endif
         }
     }

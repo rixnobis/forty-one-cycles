@@ -8,7 +8,7 @@ A PlayStation demo. Code and music by Rix. Built with psyqo and nugget; runs on 
     make -j8                  # forty-one.ps-exe; needs mipsel-none-elf-g++
     make DEBUG_SKIP=65        # start at bar 65
 
-Overlay off: `make EXTRA=-DNO_OVERLAY`. Note mirror mask override: `make MIRROR_MASK=0x...`
+Overlay off: `make EXTRA=-DNO_OVERLAY`. Release (no overlay, no serial trace, so it runs with nothing reading the serial port): `make EXTRA="-DNO_OVERLAY -DNO_LOG"`. Note mirror mask override: `make MIRROR_MASK=0x...`
 (bit n = MIDI channel n, 0-based).
 
 ## Music

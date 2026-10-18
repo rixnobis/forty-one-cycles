@@ -5,7 +5,7 @@
 // is rotated by one VRAM-to-VRAM copy per frame inside the chain.
 #include "s05_plasma.hh"
 
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "handoff.hh"
 #include "psyqo/primitives/quads.hh"
 #include "psyqo/primitives/rectangles.hh"
@@ -297,7 +297,7 @@ class Plasma final : public Section {
             uint32_t dt = f.clock.ticks - m_logTicks;
             if (m_logFrame && dt) {
                 uint32_t fps10 = (f.frameNo - m_logFrame) * 1120 / dt;
-                ramsyscall_printf("S5 fps %d.%d at bar %d frac %d\n", int(fps10 / 10), int(fps10 % 10), f.clock.bar,
+                DEMO_LOG("S5 fps %d.%d at bar %d frac %d\n", int(fps10 / 10), int(fps10 % 10), f.clock.bar,
                                   f.clock.frac);
             }
             m_logFrame = f.frameNo;

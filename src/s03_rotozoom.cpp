@@ -2,7 +2,7 @@
 // here) is the texture: a 20x15 grid of textured quads under a 128x128 texture window.
 // Angle steps once per lead note, zoom follows the lead pitch, the kick pulses the zoom,
 // a mirrored additive plane joins at bar 41, and the zoom dives into the centre on bar 48.
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "s02_copper.hh"
 
 namespace demo {
@@ -120,7 +120,7 @@ class Rotozoom final : public Section {
         m_frames++;
         if (m_fpsTick == 0) m_fpsTick = c.ticks;
         if (c.ticks - m_fpsTick >= 224) {
-            ramsyscall_printf("S3 fps*10 %d (frames %d ticks %d) bar %d\n", int(m_frames * 112 * 10 / (c.ticks - m_fpsTick)),
+            DEMO_LOG("S3 fps*10 %d (frames %d ticks %d) bar %d\n", int(m_frames * 112 * 10 / (c.ticks - m_fpsTick)),
                               int(m_frames), int(c.ticks - m_fpsTick), c.bar);
             m_frames = 0;
             m_fpsTick = c.ticks;

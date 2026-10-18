@@ -5,7 +5,7 @@
 // Rings sit at geometric depths so every patch spans the same depth ratio (1.3): affine texture
 // error is then the same few percent of a 4 texel span everywhere. Forward motion is the texture
 // scrolling along the tunnel (v), the kick adds a burst of scroll plus a z-squeeze (surge).
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "demo.hh"
 #include "handoff.hh"
 #include "psyqo/fixed-point.hh"
@@ -196,7 +196,7 @@ class Tunnel final : public Section {
             uint32_t dt = f.clock.ticks - m_logTicks;
             if (m_logFrame && dt) {
                 uint32_t fps10 = (f.frameNo - m_logFrame) * 1120 / dt;
-                ramsyscall_printf("S6 fps %d.%d at bar %d frac %d quads %d+%d\n", int(fps10 / 10), int(fps10 % 10),
+                DEMO_LOG("S6 fps %d.%d at bar %d frac %d quads %d+%d\n", int(fps10 / 10), int(fps10 % 10),
                                   f.clock.bar, f.clock.frac, int(m_drawn), int(m_drawn2));
             }
             m_logFrame = f.frameNo;

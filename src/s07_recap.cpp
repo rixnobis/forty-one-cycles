@@ -4,7 +4,7 @@
 // scroller, radial flashes. Crash 97 and 105 cut the camera, the shot at 105 flashes, the fills at 104
 // and 112 scatter the balls and they re-form on the next bar. From bar 113 the balls leave with the
 // clap, the copper with the bass fade, the stars last.
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "demo.hh"
 #include "handoff.hh"
 #include "psyqo/fixed-point.hh"
@@ -536,7 +536,7 @@ class Scene final : public RecapScene {
             uint32_t dt = f.clock.ticks - m_logTicks;
             if (m_logFrame && dt) {
                 uint32_t fps10 = (f.frameNo - m_logFrame) * 1120 / dt;
-                ramsyscall_printf("S7 fps %d.%d at bar %d frac %d\n", int(fps10 / 10), int(fps10 % 10), f.clock.bar, f.clock.frac);
+                DEMO_LOG("S7 fps %d.%d at bar %d frac %d\n", int(fps10 / 10), int(fps10 % 10), f.clock.bar, f.clock.frac);
             }
             m_logFrame = f.frameNo;
             m_logTicks = f.clock.ticks;

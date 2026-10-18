@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "common/hardware/spu.h"
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "demo.hh"
 #include "s05_plasma.hh"
 #include "psyqo/application.hh"
@@ -197,7 +197,7 @@ void DemoScene::drain() {
             if (e.tag == TAG_BAR) {
                 if (m_clock.bar && int(e.data) == m_clock.bar + 1) {
                     uint32_t delta = e.tick - m_barTick;
-                    ramsyscall_printf("BAR %d tick %d delta %d catchup %d\n", int(e.data), int(e.tick), int(delta), int(g_catchup));
+                    DEMO_LOG("BAR %d tick %d delta %d catchup %d\n", int(e.data), int(e.tick), int(delta), int(g_catchup));
                     m_tpb256 = (m_tpb256 * 7 + delta * 256) / 8;  // smooth the 171/172 jitter
                 }
                 m_barTick = e.tick;
@@ -205,7 +205,7 @@ void DemoScene::drain() {
                 m_clock.sinceBar = 0;
                 if (m_active) m_active->onBar(m_clock, m_clock.bar);
             } else if (e.tag == TAG_SECTION && e.data < NUM_SECTIONS) {
-                ramsyscall_printf("SECTION %d at bar %d tick %d\n", int(e.data), m_clock.bar, int(e.tick));
+                DEMO_LOG("SECTION %d at bar %d tick %d\n", int(e.data), m_clock.bar, int(e.tick));
                 // a new pass of the song starts with section 0: nothing precedes it
                 if (e.data == 0) m_active = nullptr;
                 switchTo(e.data, m_clock.bar);
@@ -214,12 +214,12 @@ void DemoScene::drain() {
             uint8_t note = e.data & 0xff, vel = (e.data >> 8) & 0xff;
             if (e.tag < 16 && !m_logged[e.tag]) {
                 m_logged[e.tag] = true;
-                ramsyscall_printf("NOTE first on mirrored channel %d: note %d vel %d tick %d\n", e.tag, note, vel,
+                DEMO_LOG("NOTE first on mirrored channel %d: note %d vel %d tick %d\n", e.tag, note, vel,
                                   int(e.tick));
             }
             if (e.tag == CH_DRUMS && note == KEY_KICK && !m_loggedKick) {
                 m_loggedKick = true;
-                ramsyscall_printf("KICK seen: tag %d note %d vel %d tick %d\n", e.tag, note, vel, int(e.tick));
+                DEMO_LOG("KICK seen: tag %d note %d vel %d tick %d\n", e.tag, note, vel, int(e.tick));
             }
             m_active->onNote(m_clock, e.tag, note, vel, e.tick);
         }

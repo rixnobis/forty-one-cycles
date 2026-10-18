@@ -1,7 +1,7 @@
 // Section 4: VECTOR BALLS (bars 49-64). See s04_balls.hh for the reusable ball field.
 #include "s04_balls.hh"
 
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "handoff.hh"
 #include "psyqo/fixed-point.hh"
 #include "psyqo/gte-kernels.hh"
@@ -415,7 +415,7 @@ class BallsSection final : public Section {
     void onNote(const Clock& c, unsigned ch, uint8_t note, uint8_t, uint32_t tick) override {
 #ifdef BALLS_LOG
         if (ch == CH_ORCH || (ch == CH_DRUMS && note == KEY_CRASH)) {
-            ramsyscall_printf("S4 ch %d note %d at bar %d frac %d tick %d\n", int(ch), int(note), c.bar, c.frac, int(tick));
+            DEMO_LOG("S4 ch %d note %d at bar %d frac %d tick %d\n", int(ch), int(note), c.bar, c.frac, int(tick));
         }
 #endif
         switch (ch) {
@@ -490,7 +490,7 @@ class BallsSection final : public Section {
             uint32_t dt = f.clock.ticks - m_logTicks;
             if (m_logFrame && dt) {
                 uint32_t fps10 = (f.frameNo - m_logFrame) * 1120 / dt;
-                ramsyscall_printf("S4 fps %d.%d at bar %d frac %d\n", int(fps10 / 10), int(fps10 % 10), f.clock.bar,
+                DEMO_LOG("S4 fps %d.%d at bar %d frac %d\n", int(fps10 / 10), int(fps10 % 10), f.clock.bar,
                                   f.clock.frac);
             }
             m_logFrame = f.frameNo;

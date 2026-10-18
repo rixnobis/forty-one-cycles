@@ -90,7 +90,7 @@ struct TriList {
 
 }  // namespace demo
 
-#include "common/syscalls/syscalls.h"
+#include "log.hh"
 #include "demo.hh"
 
 namespace demo {
@@ -104,7 +104,7 @@ struct BarStat {
         vsyncs = f.gpu.getFrameCount();
     }
     void bar(const char* tag, int n) {
-        if (primed) ramsyscall_printf("%s bar %d frames %d vsyncs %d\n", tag, n, int(frames - lastFrames), int(vsyncs - lastVsyncs));
+        if (primed) DEMO_LOG("%s bar %d frames %d vsyncs %d\n", tag, n, int(frames - lastFrames), int(vsyncs - lastVsyncs));
         primed = true;
         lastFrames = frames;
         lastVsyncs = vsyncs;

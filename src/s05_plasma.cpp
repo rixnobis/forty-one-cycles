@@ -75,11 +75,11 @@ Cycler& cycler() {
     return c;
 }
 
-void Cycler::prepare(Frame& f) {
+void Cycler::prepare(psyqo::GPU& gpu, psyqo::Trig<>& trig) {
     if (m_prepared) return;
-    initTables(f.trig);
-    f.gpu.waitChainIdle();
-    f.gpu.uploadToVRAM(&g_rows[0][0], psyqo::Rect{ROW_X, ROW_Y, 512, 4});
+    initTables(trig);
+    gpu.waitChainIdle();
+    gpu.uploadToVRAM(&g_rows[0][0], psyqo::Rect{ROW_X, ROW_Y, 512, 4});
     m_prepared = true;
 }
 
@@ -124,22 +124,29 @@ void Cycler::computeRow(unsigned y) {
     for (int x = 0; x < 32; x++) out[128 + x] = out[x];
 }
 
-bool Cycler::buildStep(Frame& f, unsigned rows) {
+bool Cycler::buildStep(psyqo::GPU& gpu, psyqo::Trig<>& trig, unsigned rows) {
     if (m_row >= 128) return true;
-    initTables(f.trig);
+    initTables(trig);
     unsigned n = 128 - m_row < rows ? 128 - m_row : rows;
     for (unsigned r = 0; r < n; r++) computeRow(m_row + r);
-    f.gpu.waitChainIdle();
-    f.gpu.uploadToVRAM(reinterpret_cast<const uint16_t*>(&g_tex[m_row * TEX_W]),
+    gpu.waitChainIdle();
+    gpu.uploadToVRAM(reinterpret_cast<const uint16_t*>(&g_tex[m_row * TEX_W]),
                        psyqo::Rect{TEX_X, TEX_Y + int(m_row), TEX_W / 2, int(n)});
     m_row += n;
     return m_row >= 128;
 }
 
-void Cycler::ensureAll(Frame& f) {
-    prepare(f);
-    while (!buildStep(f, 32)) {
+void Cycler::ensureAll(psyqo::GPU& gpu, psyqo::Trig<>& trig) {
+    prepare(gpu, trig);
+    while (!buildStep(gpu, trig, 32)) {
     }
+}
+
+void prewarm(psyqo::GPU& gpu, psyqo::Trig<>& trig) {
+    auto& c = cycler();
+    if (c.textureReady()) return;
+    c.restart(nullptr, nullptr, 0);
+    c.ensureAll(gpu, trig);
 }
 
 void Cycler::advance(const Clock& c, int32_t speedPerSec) {
@@ -211,7 +218,20 @@ class Plasma final : public Section {
     const char* name() const override { return "S5 PLASMA_MESSAGE"; }
 
     void begin(const Clock& c, Section*) override {
-        cycler().restart(g_handoff.ballX, g_handoff.ballY, g_handoff.ballCount);
+        // Texture resident (prewarm): the balls seed a view offset into the periodic page. Otherwise rebuild
+        // with the balls as ring centres.
+        m_du = m_dv = 0;
+        if (g_handoff.ballCount >= 4) {
+            int sx = 0, sy = 0;
+            for (unsigned k = 0; k < 4; k++) {
+                unsigned i = k * g_handoff.ballCount / 4;
+                sx += g_handoff.ballX[i] >> 1;
+                sy += g_handoff.ballY[i] >> 1;
+            }
+            m_du = ((sx / 4 - 77) & 127) % 96;
+            m_dv = (sy / 4 - 65) & 127;
+        }
+        if (!cycler().textureReady()) cycler().restart(g_handoff.ballX, g_handoff.ballY, g_handoff.ballCount);
         for (auto& t : m_trig) t = -1;
         m_pendCounter = false;
         m_ripple = -100000;
@@ -284,7 +304,7 @@ class Plasma final : public Section {
             m_logTicks = f.clock.ticks;
         }
         cycler().prepare(f);
-        bool ready = cycler().textureReady() || cycler().buildStep(f, 32);
+        bool ready = cycler().textureReady() || cycler().buildStep(f, 32);  // only without prewarm()
 
         gpu.getNextClear(m_clear[p].primitive, {{.r = 0, .g = 0, .b = 0}});
         gpu.chain(m_clear[p]);
@@ -303,11 +323,12 @@ class Plasma final : public Section {
         } else {
             m = 0x74 + ((rel - 3072) * 0x1c >> 10);
         }
-        m = (m * clampi(rel * 256 / 80, 0, 256)) >> 8;  // fade up out of black at bar 65
+        m = (m * (150 + clampi(rel * 106 / 80, 0, 106))) >> 8;  // first frame already visible: S4's dark bed
         int32_t rd = pos - m_ripple;
         if (rd >= 0 && rd < 32) m += ((32 - rd) * 0x20) >> 5;
         int32_t mA = clampi(m, 0, 255), mB = clampi(m * 3 / 8, 0, 255);
 
+        m_texWin[p].primitive.command = 0xe2000000 | 16 | (16 << 5);  // 128x128 window: the page is periodic
         gpu.chain(m_texWin[p]);
         cycler().chainClut(f);
 
@@ -323,10 +344,10 @@ class Plasma final : public Section {
         qa.pointB = {{.x = 320, .y = 0}};
         qa.pointC = {{.x = 0, .y = 240}};
         qa.pointD = {{.x = 320, .y = 240}};
-        qa.uvA = {0, 0};
-        qa.uvB = {159, 0};
-        qa.uvC = {0, 119};
-        qa.uvD = {159, 119};
+        qa.uvA = {uint8_t(m_du), uint8_t(m_dv)};
+        qa.uvB = {uint8_t(m_du + 159), uint8_t(m_dv)};
+        qa.uvC = {uint8_t(m_du), uint8_t(m_dv + 119)};
+        qa.uvD = {uint8_t(m_du + 159), uint8_t(m_dv + 119)};
 #ifdef PLASMA_TILE_TEST
         // 128x128 texture window, UV 0..255: the texture shows twice in each direction
         m_texWin[p].primitive.command = 0xe2000000 | 16 | (16 << 5);
@@ -338,7 +359,7 @@ class Plasma final : public Section {
         qa.tpage = tpOpaque;
         gpu.chain(m_qa[p]);
 
-        int u0 = 16 + ((S(pos >> 2) * 16) >> 7), v0 = 12 + ((S((pos * 3 >> 3) + 64) * 12) >> 7);
+        int u0 = (16 + ((S(pos >> 2) * 16) >> 7) + 64 - m_du / 2) & 127, v0 = (12 + ((S((pos * 3 >> 3) + 64) * 12) >> 7) + 32 + m_dv) & 127;
         auto& qb = m_qb[p].primitive;
         qb.setColor(gray(mB));
         qb.setSemiTrans();
@@ -354,6 +375,7 @@ class Plasma final : public Section {
         qb.tpage = tpAdd;
         gpu.chain(m_qb[p]);
 
+        gpu.chain(m_texOff[p]);
         text(f, p, rel);
 
         // bleach: risers over bars 77-78 and 79-80, a slow floor, then white into bar 81
@@ -465,7 +487,7 @@ class Plasma final : public Section {
     }
 
     psyqo::Fragments::SimpleFragment<psyqo::Prim::FastFill> m_clear[2];
-    psyqo::Fragments::SimpleFragment<TexWindowOff> m_texWin[2];
+    psyqo::Fragments::SimpleFragment<TexWindowOff> m_texWin[2], m_texOff[2];
     psyqo::Fragments::SimpleFragment<psyqo::Prim::TexturedQuad> m_qa[2], m_qb[2];
     psyqo::Fragments::SimpleFragment<GlyphPrologue> m_pro[2];
     TQuad m_shadow[2][kMaxGlyphs], m_glyph[2][kMaxGlyphs];
@@ -474,6 +496,7 @@ class Plasma final : public Section {
     psyqo::Fragments::SimpleFragment<psyqo::Prim::TPage> m_tpSub[2];
     psyqo::Fragments::SimpleFragment<psyqo::Prim::Rectangle> m_band[2];
 
+    int m_du = 0, m_dv = 0;
     int32_t m_trig[kNumLines] = {};
     int32_t m_rel = 0, m_ripple = -100000, m_speed = 14 * 256;
     uint32_t m_snare[8] = {};

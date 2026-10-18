@@ -36,15 +36,18 @@ struct Blit {  // GP0(80h) VRAM to VRAM copy
 class Cycler {
   public:
     // Palette source rows to VRAM (blocking, once). Idempotent.
-    void prepare(Frame& f);
+    void prepare(psyqo::GPU& gpu, psyqo::Trig<>& trig);
+    void prepare(Frame& f) { prepare(f.gpu, f.trig); }
     // Texture generation, rows at a time: each call computes up to `rows` rows and uploads them
     // (waits for the chain to idle). Returns true once all 128 rows are in VRAM.
     // restart(centres) re-arms it with new interference centres (screen coordinates).
     void restart(const int16_t* x, const int16_t* y, unsigned count);
-    bool buildStep(Frame& f, unsigned rows);
+    bool buildStep(psyqo::GPU& gpu, psyqo::Trig<>& trig, unsigned rows);
+    bool buildStep(Frame& f, unsigned rows) { return buildStep(f.gpu, f.trig, rows); }
     bool textureReady() const { return m_row >= 128; }
     // S6 entry without S5 (DEBUG_SKIP): prepare + the whole texture, blocking.
-    void ensureAll(Frame& f);
+    void ensureAll(psyqo::GPU& gpu, psyqo::Trig<>& trig);
+    void ensureAll(Frame& f) { ensureAll(f.gpu, f.trig); }
 
     // Integrate the cycle: layer A runs forward at speedPerSec palette entries per second, layer B backward
     // at 0.4 of it. A function of clock.ticks only. bump() adds a decaying shift impulse (entries).
@@ -77,5 +80,9 @@ class Cycler {
 };
 
 Cycler& cycler();
+
+// Startup: palette rows + the whole texture into VRAM (blocking, ~40 ms), default ring centres. Call once, before
+// the music timer arms. After this S5's first frame draws immediately and S6 never needs ensureAll().
+void prewarm(psyqo::GPU& gpu, psyqo::Trig<>& trig);
 
 }  // namespace demo::pl

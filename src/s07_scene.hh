@@ -50,8 +50,8 @@ struct GlyphBatch {
         a.setPageX(960 >> 6).setPageY(464 >> 8).set(psyqo::Prim::TPageAttr::Tex4Bits).setDithering(false).enableDisplayArea();
         unsigned idx = unsigned(ch - 32);
         uint8_t u0 = uint8_t(idx * 8), v0 = uint8_t(208 + 16 * (idx / 32));
-        uint8_t u1 = u0 + 8 > 255 ? 255 : uint8_t(u0 + 8);
-        uint8_t v1 = v0 + 16 > 255 ? 255 : uint8_t(v0 + 16);
+        uint8_t u1 = uint8_t(u0 + 7);  // last texel of the cell; u0 + 8 is the next glyph
+        uint8_t v1 = uint8_t(v0 + 15);
         for (int layer = 0; layer < 2; layer++) {
             auto& q = (layer ? glyph : shadow)[n].primitive;
             int o = layer ? 0 : 2;

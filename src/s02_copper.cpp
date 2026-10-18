@@ -136,8 +136,8 @@ class Copper final : public Section {
             int y = kScrollerY - 8 + ((40 * sinq(f.trig, x * 7 + pos * 5)) >> 12);
             unsigned idx = unsigned(ch - 32);
             uint8_t u0 = uint8_t(idx * 8), v0 = uint8_t(208 + 16 * (idx / 32));
-            uint8_t u1 = u0 + 8 > 255 ? 255 : uint8_t(u0 + 8);
-            uint8_t v1 = v0 + 16 > 255 ? 255 : uint8_t(v0 + 16);
+            uint8_t u1 = uint8_t(u0 + 7);  // last texel of the cell; u0 + 8 is the next glyph
+            uint8_t v1 = uint8_t(v0 + 15);
             psyqo::Color tint = mix(rgb(255, 255, 255), demo::rowColor(unsigned(k) & 15), 70);
             for (int layer = 0; layer < 2; layer++) {
                 auto& q = (layer ? m_glyph : m_shadow)[p][n].primitive;

@@ -24,6 +24,7 @@ namespace demo {
 namespace {
 
 constexpr unsigned NSTARS = 258;
+static_assert(NSTARS % 3 == 0, "the RTPT loop projects three stars at a time; a remainder writes past m_star");
 constexpr int Z_NEAR = 128, Z_FAR = 1024, H = 256, CX = 160, CY = 120;
 constexpr int FIRST_BAR = 97, END_BAR = 113;
 constexpr int FLASH_LEN = 40;  // clock units
